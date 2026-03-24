@@ -1,0 +1,35 @@
+# Secrets
+secrets.py
+*.env
+.env*
+config/.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# Node
+node_modules/
+npm-debug.log
+
+# Build artifacts
+*.bin
+*.elf
+*.hex
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Data / exports
+*.db
+*.sqlite
+overnight_results/
+*.wav
