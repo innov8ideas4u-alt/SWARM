@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SWARM</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --bg: #070a0f;
+    --bg2: #0d1117;
+    --panel: #0f1620;
+    --border: #1a2840;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #39ff14;
+    --text: #c8d8e8;
+    --dim: #4a6080;
+    --danger: #ff2d55;
+    --glow: 0 0 20px rgba(0,212,255,0.3);
+    --glow2: 0 0 20px rgba(57,255,20,0.3);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content:'';
+    position:fixed; top:0; left:0; right:0; bottom:0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events:none; z-index:9999;
+  }
+
+  /* Grid bg */
+  body::after {
+    content:'';
+    position:fixed; top:0; left:0; right:0; bottom:0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events:none; z-index:0;
+  }
+
+  .container { position:relative; z-index:1; max-width:1200px; margin:0 auto; padding:20px; }
+
+  /* HEADER */
+  header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 16px 0 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 2rem;
+    font-weight: 900;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    position: relative;
+  }
+  .logo span { color: var(--accent2); }
+  .logo-sub {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: var(--dim);
+    margin-top: 2px;
+  }
+
+  .header-right { display:flex; gap:12px; align-items:center; }
+
+  .status-dot {
+    width:8px; height:8px; border-radius:50%;
+    background: var(--accent3);
+    box-shadow: var(--glow2);
+    animation: pulse 2s infinite;
+  }
+  .status-dot.offline { background: var(--danger); box-shadow: 0 0 10px rgba(255,45,85,0.5); animation:none; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .status-text { font-size:0.7rem; color: var(--dim); letter-spacing:0.1em; }
+
+  /* SETTINGS PANEL */
+  .settings-bar {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    align-items: end;
+  }
+
+  .setting-group { display:flex; flex-direction:column; gap:6px; }
+  .setting-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--dim);
+    text-transform: uppercase;
+  }
+
+  /* Chip selector (like Claude's multiple choice) */
+  .chip-row { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--dim);
+    cursor: pointer;
+    background: transparent;
+    transition: all 0.15s;
+    letter-spacing: 0.05em;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,212,255,0.08);
+    box-shadow: 0 0 8px rgba(0,212,255,0.2);
+  }
+  .chip.active.orange { border-color:var(--accent2); color:var(--accent2); background:rgba(255,107,53,0.08); box-shadow:0 0 8px rgba(255,107,53,0.2); }
+
+  /* Slider */
+  .slider-wrap { display:flex; gap:10px; align-items:center; }
+  input[type=range] {
+    -webkit-appearance:none; flex:1; height:2px;
+    background: var(--border); border-radius:2px; outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance:none; width:14px; height:14px;
+    border-radius:50%; background:var(--accent);
+    box-shadow: var(--glow); cursor:pointer;
+  }
+  .slider-val { font-size:0.8rem; color:var(--accent); min-width:24px; text-align:right; }
+
+  /* Model select */
+  select {
+    background: var(--bg2); border: 1px solid var(--border);
+    color: var(--text); padding: 5px 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem; border-radius:2px; cursor:pointer;
+    outline:none; width:100%;
+  }
+  select:focus { border-color: var(--accent); }
+
+  /* AGENT GRID */
+  .agents-section { margin-bottom: 20px; }
+  .section-title {
+    font-size: 0.65rem; letter-spacing:0.2em; color:var(--dim);
+    text-transform:uppercase; margin-bottom:12px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  .agent-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 8px;
+  }
+
+  .agent-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .agent-card::before {
+    content:'';
+    position:absolute; top:0; left:0; right:0; height:2px;
+    background: var(--accent); opacity:0;
+    transition: opacity 0.15s;
+  }
+  .agent-card:hover::before, .agent-card.selected::before { opacity:1; }
+  .agent-card.selected {
+    border-color: rgba(0,212,255,0.4);
+    background: rgba(0,212,255,0.05);
+  }
+  .agent-card.active-run {
+    border-color: var(--accent3);
+    animation: agent-pulse 1s infinite;
+  }
+  .agent-card.active-run::before { background:var(--accent3); opacity:1; }
+  .agent-card.done { border-color: rgba(57,255,20,0.3); }
+  .agent-card.done::before { background:var(--accent3); opacity:0.5; }
+
+  @keyframes agent-pulse {
+    0%,100%{ box-shadow: 0 0 0 rgba(57,255,20,0); }
+    50%{ box-shadow: 0 0 12px rgba(57,255,20,0.3); }
+  }
+
+  .agent-icon { font-size:1.2rem; margin-bottom:4px; }
+  .agent-name { font-size:0.7rem; font-weight:bold; letter-spacing:0.05em; margin-bottom:2px; }
+  .agent-role { font-size:0.6rem; color:var(--dim); line-height:1.3; }
+  .agent-status {
+    font-size:0.55rem; margin-top:6px;
+    color: var(--dim); letter-spacing:0.1em;
+    min-height:12px;
+  }
+  .agent-status.running { color:var(--accent3); }
+  .agent-status.done { color:var(--accent); }
+  .agent-status.error { color:var(--danger); }
+
+  /* SWARM VISUALIZATION */
+  .swarm-vis {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 20px;
+    min-height: 80px;
+    display:flex; align-items:center; gap:12px;
+    flex-wrap:wrap;
+  }
+  .vis-label { font-size:0.6rem; color:var(--dim); letter-spacing:0.15em; }
+  .vis-node {
+    width:32px; height:32px; border-radius:50%;
+    border: 2px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    font-size:0.9rem; position:relative;
+    transition: all 0.3s;
+  }
+  .vis-node.waiting { border-color:var(--border); opacity:0.4; }
+  .vis-node.running {
+    border-color:var(--accent3);
+    box-shadow: 0 0 12px rgba(57,255,20,0.5);
+    animation: spin-glow 2s linear infinite;
+  }
+  .vis-node.done { border-color:var(--accent); box-shadow: 0 0 8px rgba(0,212,255,0.3); }
+  .vis-node.error { border-color:var(--danger); }
+
+  @keyframes spin-glow {
+    0%{ box-shadow: 0 0 8px rgba(57,255,20,0.3), 0 0 0 0 rgba(57,255,20,0.1); }
+    50%{ box-shadow: 0 0 16px rgba(57,255,20,0.6), 0 0 0 4px rgba(57,255,20,0.05); }
+    100%{ box-shadow: 0 0 8px rgba(57,255,20,0.3), 0 0 0 0 rgba(57,255,20,0.1); }
+  }
+
+  /* PROMPT BAR */
+  .prompt-section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .prompt-wrap { display:flex; gap:10px; align-items:flex-end; }
+
+  textarea {
+    flex:1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    padding: 12px 14px;
+    resize: none;
+    min-height: 60px;
+    line-height: 1.5;
+    outline:none;
+    transition: border-color 0.15s;
+  }
+  textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(0,212,255,0.1); }
+  textarea::placeholder { color: var(--dim); }
+
+  .btn-launch {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    padding: 12px 24px;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+  .btn-launch:hover { background:#00b8d9; box-shadow: var(--glow); }
+  .btn-launch:disabled { background:var(--dim); cursor:not-allowed; box-shadow:none; }
+  .btn-launch.running { background: var(--danger); }
+
+  .btn-sm {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--dim);
+    padding: 6px 12px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing:0.1em;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-sm:hover { border-color:var(--accent); color:var(--accent); }
+
+  /* OUTPUT LOG */
+  .output-section { margin-bottom: 20px; }
+
+  .output-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    min-height: 200px;
+    max-height: 400px;
+    overflow-y: auto;
+    font-size: 0.78rem;
+    line-height: 1.7;
+  }
+  .output-box::-webkit-scrollbar { width:4px; }
+  .output-box::-webkit-scrollbar-track { background:var(--bg); }
+  .output-box::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  .log-entry { margin-bottom: 8px; display:flex; gap:8px; }
+  .log-time { color:var(--dim); font-size:0.65rem; min-width:50px; padding-top:2px; }
+  .log-agent { min-width:100px; font-size:0.65rem; padding-top:2px; }
+  .log-msg { flex:1; }
+  .log-msg.system { color:var(--dim); font-style:italic; }
+  .log-msg.thinking { color:var(--accent2); }
+  .log-msg.output { color:var(--text); }
+  .log-msg.error { color:var(--danger); }
+  .log-msg.final { color:var(--accent3); font-weight:bold; }
+
+  /* FINAL OUTPUT */
+  .final-output {
+    background: var(--panel);
+    border: 1px solid rgba(57,255,20,0.3);
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 20px;
+    display:none;
+  }
+  .final-output.show { display:block; }
+  .final-title {
+    font-family:'Orbitron',monospace;
+    font-size:0.7rem; letter-spacing:0.2em;
+    color:var(--accent3); margin-bottom:12px;
+    text-shadow: var(--glow2);
+  }
+  .final-content {
+    color:var(--text); font-size:0.82rem; line-height:1.8;
+    white-space:pre-wrap;
+  }
+
+  /* PROGRESS BAR */
+  .progress-bar-wrap {
+    height:2px; background:var(--border); border-radius:2px;
+    margin-bottom:16px; overflow:hidden; display:none;
+  }
+  .progress-bar-wrap.show { display:block; }
+  .progress-bar {
+    height:100%; background:var(--accent);
+    border-radius:2px; width:0%;
+    transition: width 0.3s ease;
+    box-shadow: var(--glow);
+  }
+
+  /* Tooltip */
+  [data-tip] { position:relative; }
+  [data-tip]:hover::after {
+    content: attr(data-tip);
+    position:absolute; bottom:calc(100% + 6px); left:50%;
+    transform:translateX(-50%);
+    background:#1a2840; border:1px solid var(--border);
+    color:var(--text); font-size:0.65rem; padding:4px 8px;
+    border-radius:2px; white-space:nowrap; z-index:100;
+    letter-spacing:0.05em;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div>
+      <div class="logo">SW<span>A</span>RM</div>
+      <div class="logo-sub">MULTI-AGENT INTELLIGENCE SYSTEM // LOCAL</div>
+    </div>
+    <div class="header-right">
+      <div class="status-dot offline" id="statusDot"></div>
+      <div class="status-text" id="statusText">CHECKING OLLAMA...</div>
+    </div>
+  </header>
+
+  <!-- SETTINGS -->
+  <div class="settings-bar">
+
+    <div class="setting-group">
+      <div class="setting-label">⚙ Ollama Model</div>
+      <select id="modelSelect">
+        <option value="qwen2.5-coder:14b">qwen2.5-coder:14b</option>
+        <option value="qwen2.5:14b">qwen2.5:14b</option>
+        <option value="llama3.1:8b">llama3.1:8b</option>
+        <option value="mistral:7b">mistral:7b</option>
+        <option value="deepseek-coder-v2:16b">deepseek-coder-v2:16b</option>
+        <option value="phi4:14b">phi4:14b</option>
+      </select>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-label">⚡ Agent Count</div>
+      <div class="slider-wrap">
+        <input type="range" id="agentCount" min="2" max="10" value="5">
+        <span class="slider-val" id="agentCountVal">5</span>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-label">🔁 Iterations</div>
+      <div class="slider-wrap">
+        <input type="range" id="iterCount" min="1" max="5" value="2">
+        <span class="slider-val" id="iterCountVal">2</span>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-label">🎯 Task Mode</div>
+      <div class="chip-row" id="modeChips">
+        <button class="chip active" data-val="improve" onclick="selectChip(this,'modeChips')">IMPROVE</button>
+        <button class="chip" data-val="research" onclick="selectChip(this,'modeChips')">RESEARCH</button>
+        <button class="chip" data-val="code" onclick="selectChip(this,'modeChips')">CODE</button>
+        <button class="chip" data-val="debate" onclick="selectChip(this,'modeChips')">DEBATE</button>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-label">🧠 Strategy</div>
+      <div class="chip-row" id="stratChips">
+        <button class="chip active orange" data-val="parallel" onclick="selectChip(this,'stratChips')">PARALLEL</button>
+        <button class="chip" data-val="sequential" onclick="selectChip(this,'stratChips')">CHAIN</button>
+        <button class="chip" data-val="debate" onclick="selectChip(this,'stratChips')">VOTE</button>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-label">🌐 Ollama Host</div>
+      <input type="text" id="ollamaHost" value="http://localhost:11434"
+        style="background:var(--bg2);border:1px solid var(--border);color:var(--text);
+        padding:5px 8px;font-family:'Share Tech Mono',monospace;font-size:0.75rem;
+        border-radius:2px;outline:none;width:100%;">
+    </div>
+
+  </div>
+
+  <!-- AGENT SELECTION -->
+  <div class="agents-section">
+    <div class="section-title">Active Agents <button class="btn-sm" onclick="resetAgents()" style="margin-left:auto">RESET</button></div>
+    <div class="agent-grid" id="agentGrid"></div>
+  </div>
+
+  <!-- SWARM VISUALIZATION -->
+  <div class="swarm-vis" id="swarmVis">
+    <span class="vis-label">SWARM //</span>
+    <span id="visNodes" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;"></span>
+    <span id="visStatus" style="font-size:0.65rem;color:var(--dim);margin-left:auto;letter-spacing:0.1em;">IDLE</span>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-bar-wrap" id="progressWrap">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+
+  <!-- PROMPT BAR -->
+  <div class="prompt-section">
+    <div class="prompt-wrap">
+      <textarea id="promptInput" rows="2"
+        placeholder="Describe your task — SWARM will deploy agents to solve, critique, and refine it..."></textarea>
+      <button class="btn-launch" id="launchBtn" onclick="launchSwarm()">LAUNCH</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="btn-sm" onclick="loadExample('improve')">▸ EXAMPLE: IMPROVE</button>
+      <button class="btn-sm" onclick="loadExample('code')">▸ EXAMPLE: CODE</button>
+      <button class="btn-sm" onclick="loadExample('research')">▸ EXAMPLE: RESEARCH</button>
+      <button class="btn-sm" onclick="clearAll()" style="margin-left:auto">✕ CLEAR</button>
+    </div>
+  </div>
+
+  <!-- OUTPUT LOG -->
+  <div class="output-section">
+    <div class="section-title">Agent Log</div>
+    <div class="output-box" id="outputBox">
+      <div class="log-entry">
+        <span class="log-time">--:--</span>
+        <span class="log-agent" style="color:var(--dim)">SYSTEM</span>
+        <span class="log-msg system">SWARM ready. Configure agents above and enter your task.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FINAL OUTPUT -->
+  <div class="final-output" id="finalOutput">
+    <div class="final-title">◈ SWARM SYNTHESIS // FINAL OUTPUT</div>
+    <div class="final-content" id="finalContent"></div>
+    <div style="margin-top:16px;display:flex;gap:8px;">
+      <button class="btn-sm" onclick="copyFinal()">⎘ COPY</button>
+      <button class="btn-sm" onclick="saveFinal()">↓ SAVE</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── AGENT DEFINITIONS ──────────────────────────────────────────
+const AGENT_DEFS = [
+  { id:'analyst',   icon:'🔍', name:'ANALYST',   role:'Breaks down the problem',          color:'var(--accent)' },
+  { id:'critic',    icon:'⚔️',  name:'CRITIC',    role:'Finds flaws and weaknesses',       color:'var(--danger)' },
+  { id:'builder',   icon:'🔨', name:'BUILDER',   role:'Constructs the solution',           color:'var(--accent2)' },
+  { id:'researcher',icon:'📡', name:'RESEARCH',  role:'Expands context and knowledge',    color:'var(--accent)' },
+  { id:'refiner',   icon:'✨', name:'REFINER',   role:'Polishes and improves output',     color:'var(--accent3)' },
+  { id:'devil',     icon:'😈', name:'DEVIL',     role:'Argues the opposite view',         color:'var(--danger)' },
+  { id:'summarizer',icon:'📋', name:'SUMMARY',   role:'Condenses and synthesizes',        color:'var(--accent)' },
+  { id:'coder',     icon:'💻', name:'CODER',     role:'Writes and reviews code',          color:'var(--accent2)' },
+  { id:'planner',   icon:'🗺️', name:'PLANNER',   role:'Breaks into actionable steps',    color:'var(--accent3)' },
+  { id:'judge',     icon:'⚖️', name:'JUDGE',     role:'Final quality assessment',         color:'var(--accent)' },
+];
+
+let selectedAgents = new Set(['analyst','critic','builder','refiner','summarizer']);
+let isRunning = false;
+let abortFlag = false;
+
+// ── CHIP SELECTOR ──────────────────────────────────────────────
+function selectChip(el, groupId) {
+  document.querySelectorAll(`#${groupId} .chip`).forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── SLIDER UPDATES ─────────────────────────────────────────────
+document.getElementById('agentCount').addEventListener('input', function() {
+  document.getElementById('agentCountVal').textContent = this.value;
+  autoSelectAgents(parseInt(this.value));
+});
+document.getElementById('iterCount').addEventListener('input', function() {
+  document.getElementById('iterCountVal').textContent = this.value;
+});
+
+function autoSelectAgents(n) {
+  const ids = AGENT_DEFS.slice(0,n).map(a=>a.id);
+  selectedAgents = new Set(ids);
+  renderAgentGrid();
+}
+
+// ── RENDER AGENT GRID ──────────────────────────────────────────
+function renderAgentGrid() {
+  const grid = document.getElementById('agentGrid');
+  grid.innerHTML = '';
+  AGENT_DEFS.forEach(a => {
+    const card = document.createElement('div');
+    card.className = 'agent-card' + (selectedAgents.has(a.id) ? ' selected' : '');
+    card.id = 'agent-' + a.id;
+    card.onclick = () => toggleAgent(a.id);
+    card.innerHTML = `
+      <div class="agent-icon">${a.icon}</div>
+      <div class="agent-name" style="color:${a.color}">${a.name}</div>
+      <div class="agent-role">${a.role}</div>
+      <div class="agent-status" id="status-${a.id}">
+        ${selectedAgents.has(a.id) ? '● SELECTED' : '○ INACTIVE'}
+      </div>`;
+    grid.appendChild(card);
+  });
+  renderVisNodes();
+}
+
+function toggleAgent(id) {
+  if (isRunning) return;
+  if (selectedAgents.has(id)) { selectedAgents.delete(id); }
+  else { selectedAgents.add(id); }
+  const count = selectedAgents.size;
+  document.getElementById('agentCount').value = count;
+  document.getElementById('agentCountVal').textContent = count;
+  renderAgentGrid();
+}
+
+function resetAgents() {
+  selectedAgents = new Set(['analyst','critic','builder','refiner','summarizer']);
+  document.getElementById('agentCount').value = 5;
+  document.getElementById('agentCountVal').textContent = 5;
+  renderAgentGrid();
+}
+
+// ── VIS NODES ──────────────────────────────────────────────────
+function renderVisNodes(states={}) {
+  const container = document.getElementById('visNodes');
+  container.innerHTML = '';
+  selectedAgents.forEach(id => {
+    const a = AGENT_DEFS.find(x=>x.id===id);
+    if (!a) return;
+    const state = states[id] || 'waiting';
+    const node = document.createElement('div');
+    node.className = `vis-node ${state}`;
+    node.id = 'vis-' + id;
+    node.title = a.name;
+    node.textContent = a.icon;
+    container.appendChild(node);
+  });
+}
+
+function setNodeState(id, state) {
+  const el = document.getElementById('vis-' + id);
+  if (el) { el.className = `vis-node ${state}`; }
+  const card = document.getElementById('agent-' + id);
+  if (card) {
+    card.className = 'agent-card ' + (state === 'running' ? 'active-run' : state === 'done' ? 'done' : 'selected');
+  }
+}
+
+// ── OLLAMA STATUS CHECK ────────────────────────────────────────
+async function checkOllama() {
+  const host = document.getElementById('ollamaHost').value;
+  try {
+    const r = await fetch(host + '/api/tags', { signal: AbortSignal.timeout(3000) });
+    if (r.ok) {
+      const data = await r.json();
+      const models = (data.models||[]).map(m=>m.name);
+      updateOllamaStatus(true, models);
+      return true;
+    }
+  } catch(e) {}
+  updateOllamaStatus(false, []);
+  return false;
+}
+
+function updateOllamaStatus(online, models) {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  if (online) {
+    dot.className = 'status-dot';
+    txt.textContent = `OLLAMA ONLINE // ${models.length} MODELS`;
+    if (models.length > 0) {
+      const sel = document.getElementById('modelSelect');
+      sel.innerHTML = '';
+      models.forEach(m => {
+        const o = document.createElement('option');
+        o.value = m; o.textContent = m;
+        sel.appendChild(o);
+      });
+      // prefer qwen2.5-coder
+      const pref = models.find(m=>m.includes('qwen2.5-coder')) || models[0];
+      if (pref) sel.value = pref;
+    }
+  } else {
+    dot.className = 'status-dot offline';
+    txt.textContent = 'OLLAMA OFFLINE';
+  }
+}
+
+// ── LOGGING ────────────────────────────────────────────────────
+function log(agentId, msg, type='output') {
+  const box = document.getElementById('outputBox');
+  const a = AGENT_DEFS.find(x=>x.id===agentId) || {name:'SYSTEM',color:'var(--dim)'};
+  const t = new Date().toLocaleTimeString('en',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `
+    <span class="log-time">${t}</span>
+    <span class="log-agent" style="color:${a.color||'var(--dim)'}">${a.name||agentId}</span>
+    <span class="log-msg ${type}">${escHtml(msg)}</span>`;
+  box.appendChild(entry);
+  box.scrollTop = box.scrollHeight;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── OLLAMA CALL ────────────────────────────────────────────────
+async function callOllama(model, systemPrompt, userPrompt) {
+  const host = document.getElementById('ollamaHost').value;
+  const body = {
+    model,
+    messages: [
+      { role:'system', content: systemPrompt },
+      { role:'user',   content: userPrompt }
+    ],
+    stream: false,
+    options: { temperature: 0.7, num_predict: 600 }
+  };
+  const r = await fetch(host + '/api/chat', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120000)
+  });
+  if (!r.ok) throw new Error(`Ollama HTTP ${r.status}`);
+  const data = await r.json();
+  return data.message?.content || '';
+}
+
+// ── SYSTEM PROMPTS PER AGENT ───────────────────────────────────
+function getSystemPrompt(agentId, mode, context) {
+  const prompts = {
+    analyst:    `You are ANALYST. Given a task, break it down clearly: what is being asked, what are the key components, what constraints exist. Be precise and structured. Current context: ${context}`,
+    critic:     `You are CRITIC. Your job is to find flaws, gaps, and weaknesses in ideas. Be sharp but constructive. Point out what's missing or wrong. Current context: ${context}`,
+    builder:    `You are BUILDER. Construct a concrete, working solution to the task. Be specific, actionable, and thorough. Current context: ${context}`,
+    researcher: `You are RESEARCHER. Expand the knowledge around this topic. Provide relevant context, examples, and related concepts that help solve it better. Current context: ${context}`,
+    refiner:    `You are REFINER. Take previous outputs and make them better: clearer, more elegant, more complete. Polish and improve. Current context: ${context}`,
+    devil:      `You are DEVIL'S ADVOCATE. Argue the opposite perspective. What are the strongest arguments against the current approach? What are the risks? Current context: ${context}`,
+    summarizer: `You are SUMMARIZER. Synthesize all inputs into a clear, concise final answer. Capture the best ideas. Current context: ${context}`,
+    coder:      `You are CODER. Write clean, working code. Review and improve any existing code. Focus on correctness and clarity. Current context: ${context}`,
+    planner:    `You are PLANNER. Break the solution into clear, ordered, actionable steps. Create a practical roadmap. Current context: ${context}`,
+    judge:      `You are JUDGE. Assess the quality of the solution. Score it and explain what's good, what needs work, and what the final verdict is. Current context: ${context}`,
+  };
+  return prompts[agentId] || `You are a helpful AI agent. Task mode: ${mode}. Context: ${context}`;
+}
+
+// ── MAIN SWARM LAUNCH ──────────────────────────────────────────
+async function launchSwarm() {
+  if (isRunning) { abortFlag = true; return; }
+
+  const prompt = document.getElementById('promptInput').value.trim();
+  if (!prompt) { alert('Enter a task first!'); return; }
+
+  const online = await checkOllama();
+  if (!online) { log('system','ERROR: Ollama is offline. Start Ollama first.','error'); return; }
+
+  isRunning = true; abortFlag = false;
+  const btn = document.getElementById('launchBtn');
+  btn.textContent = 'ABORT'; btn.classList.add('running');
+
+  const model     = document.getElementById('modelSelect').value;
+  const iters     = parseInt(document.getElementById('iterCount').value);
+  const mode      = document.querySelector('#modeChips .chip.active')?.dataset.val || 'improve';
+  const strategy  = document.querySelector('#stratChips .chip.active')?.dataset.val || 'parallel';
+  const agents    = [...selectedAgents];
+  const total     = agents.length * iters;
+  let   done      = 0;
+
+  // Reset UI
+  document.getElementById('outputBox').innerHTML = '';
+  document.getElementById('finalOutput').classList.remove('show');
+  document.getElementById('progressWrap').classList.add('show');
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('visStatus').textContent = 'RUNNING';
+  renderVisNodes();
+
+  log('system', `SWARM LAUNCH // Model: ${model} // Agents: ${agents.length} // Iterations: ${iters} // Mode: ${mode.toUpperCase()} // Strategy: ${strategy.toUpperCase()}`, 'system');
+  log('system', `Task: "${prompt}"`, 'thinking');
+
+  let sharedContext = `Original task: ${prompt}`;
+  const allOutputs = {};
+
+  try {
+    for (let iter = 0; iter < iters; iter++) {
+      log('system', `━━ ITERATION ${iter+1}/${iters} ━━`, 'system');
+      document.getElementById('visStatus').textContent = `ITER ${iter+1}/${iters}`;
+
+      if (strategy === 'parallel') {
+        // All agents run simultaneously
+        const promises = agents.map(async agentId => {
+          if (abortFlag) return;
+          const a = AGENT_DEFS.find(x=>x.id===agentId);
+          setNodeState(agentId, 'running');
+          const sStatus = document.getElementById('status-'+agentId);
+          if (sStatus) sStatus.className='agent-status running'; sStatus && (sStatus.textContent='⟳ RUNNING...');
+          log(agentId, `Processing...`, 'thinking');
+          try {
+            const sys = getSystemPrompt(agentId, mode, sharedContext);
+            const prev = allOutputs[agentId] ? `\n\nYour previous output: ${allOutputs[agentId]}` : '';
+            const out = await callOllama(model, sys, prompt + prev);
+            allOutputs[agentId] = out;
+            const preview = out.length > 120 ? out.slice(0,120)+'...' : out;
+            log(agentId, preview, 'output');
+            setNodeState(agentId, 'done');
+            if (sStatus) { sStatus.className='agent-status done'; sStatus.textContent='✓ DONE'; }
+          } catch(e) {
+            if (abortFlag) return;
+            log(agentId, `Error: ${e.message}`, 'error');
+            setNodeState(agentId, 'error');
+            if (sStatus) { sStatus.className='agent-status error'; sStatus.textContent='✕ ERROR'; }
+          }
+          done++;
+          document.getElementById('progressBar').style.width = `${Math.round(done/total*100)}%`;
+        });
+        await Promise.all(promises);
+
+      } else if (strategy === 'sequential') {
+        // Chain: each agent sees previous agent's output
+        let chainCtx = sharedContext;
+        for (const agentId of agents) {
+          if (abortFlag) break;
+          const a = AGENT_DEFS.find(x=>x.id===agentId);
+          setNodeState(agentId, 'running');
+          const sStatus = document.getElementById('status-'+agentId);
+          if (sStatus) { sStatus.className='agent-status running'; sStatus.textContent='⟳ RUNNING...'; }
+          log(agentId, `Processing chain input...`, 'thinking');
+          try {
+            const sys = getSystemPrompt(agentId, mode, chainCtx);
+            const out = await callOllama(model, sys, prompt);
+            allOutputs[agentId] = out;
+            chainCtx = `${chainCtx}\n\n[${a.name} output]: ${out}`;
+            const preview = out.length > 120 ? out.slice(0,120)+'...' : out;
+            log(agentId, preview, 'output');
+            setNodeState(agentId, 'done');
+            if (sStatus) { sStatus.className='agent-status done'; sStatus.textContent='✓ DONE'; }
+          } catch(e) {
+            if (abortFlag) break;
+            log(agentId, `Error: ${e.message}`, 'error');
+            setNodeState(agentId, 'error');
+          }
+          done++;
+          document.getElementById('progressBar').style.width = `${Math.round(done/total*100)}%`;
+        }
+
+      } else if (strategy === 'debate') {
+        // Vote: all agents run, then judge synthesizes
+        const nonJudge = agents.filter(id=>id!=='judge');
+        const judgeId  = agents.includes('judge') ? 'judge' : agents[agents.length-1];
+
+        const promises = nonJudge.map(async agentId => {
+          if (abortFlag) return;
+          setNodeState(agentId, 'running');
+          const sStatus = document.getElementById('status-'+agentId);
+          if (sStatus) { sStatus.className='agent-status running'; sStatus.textContent='⟳ RUNNING...'; }
+          try {
+            const sys = getSystemPrompt(agentId, mode, sharedContext);
+            const out = await callOllama(model, sys, prompt);
+            allOutputs[agentId] = out;
+            const preview = out.length > 120 ? out.slice(0,120)+'...' : out;
+            log(agentId, preview, 'output');
+            setNodeState(agentId, 'done');
+            if (sStatus) { sStatus.className='agent-status done'; sStatus.textContent='✓ DONE'; }
+          } catch(e) { log(agentId, `Error: ${e.message}`, 'error'); }
+          done++;
+          document.getElementById('progressBar').style.width = `${Math.round(done/total*100)}%`;
+        });
+        await Promise.all(promises);
+
+        // Judge votes
+        if (!abortFlag) {
+          setNodeState(judgeId, 'running');
+          const allViews = nonJudge.map(id=>`[${id.toUpperCase()}]: ${allOutputs[id]||'no output'}`).join('\n\n');
+          const judgePrompt = `Here are outputs from multiple agents on the task "${prompt}":\n\n${allViews}\n\nSynthesize the best answer by voting on the strongest points.`;
+          try {
+            const out = await callOllama(model, `You are JUDGE. Synthesize multiple agent outputs into the best possible answer.`, judgePrompt);
+            allOutputs[judgeId] = out;
+            log(judgeId, out.slice(0,120)+'...', 'final');
+            setNodeState(judgeId, 'done');
+          } catch(e) { log(judgeId, `Error: ${e.message}`, 'error'); }
+          done++;
+          document.getElementById('progressBar').style.width = `${Math.round(done/total*100)}%`;
+        }
+      }
+
+      if (abortFlag) break;
+
+      // Update shared context with all outputs for next iteration
+      sharedContext = `Original task: ${prompt}\n\nPrevious iteration outputs:\n` +
+        agents.map(id=>`[${id.toUpperCase()}]: ${allOutputs[id]||''}`).join('\n\n');
+    }
+
+    if (!abortFlag) {
+      // Final synthesis
+      log('system', '━━ SYNTHESIZING FINAL OUTPUT ━━', 'system');
+      const summarizerExists = agents.includes('summarizer');
+      const synthAgent = summarizerExists ? 'summarizer' : agents[agents.length-1];
+      setNodeState(synthAgent, 'running');
+
+      const allViews = agents.map(id=>
+        allOutputs[id] ? `[${(AGENT_DEFS.find(x=>x.id===id)||{name:id}).name}]:\n${allOutputs[id]}` : ''
+      ).filter(Boolean).join('\n\n---\n\n');
+
+      const finalPrompt = `Task: ${prompt}\n\nAll agent outputs:\n${allViews}\n\nSynthesize the best, most complete final answer.`;
+      const finalSys = `You are the final synthesizer. Combine the best insights from all agents into a single, clear, comprehensive answer. Do not just list what each agent said — actually produce the final, refined output.`;
+
+      try {
+        const finalOut = await callOllama(model, finalSys, finalPrompt);
+        log('system', 'SYNTHESIS COMPLETE', 'final');
+        document.getElementById('finalContent').textContent = finalOut;
+        document.getElementById('finalOutput').classList.add('show');
+        document.getElementById('progressBar').style.width = '100%';
+        document.getElementById('visStatus').textContent = 'COMPLETE';
+      } catch(e) {
+        log('system', `Synthesis error: ${e.message}`, 'error');
+      }
+    } else {
+      log('system', 'ABORTED BY USER', 'error');
+      document.getElementById('visStatus').textContent = 'ABORTED';
+    }
+
+  } catch(e) {
+    log('system', `Fatal error: ${e.message}`, 'error');
+  }
+
+  isRunning = false;
+  btn.textContent = 'LAUNCH'; btn.classList.remove('running');
+}
+
+// ── UTILS ──────────────────────────────────────────────────────
+function loadExample(type) {
+  const examples = {
+    improve:  'Improve this description of EDGE makerspace: "EDGE is a community space where people can learn technology and build projects together."',
+    code:     'Write a Python script that monitors a folder for new files and sends a desktop notification when one appears.',
+    research: 'What are the best strategies for a not-for-profit makerspace to attract funding and community members in a mid-sized Canadian city?'
+  };
+  document.getElementById('promptInput').value = examples[type] || '';
+}
+
+function clearAll() {
+  document.getElementById('promptInput').value = '';
+  document.getElementById('outputBox').innerHTML = '';
+  document.getElementById('finalOutput').classList.remove('show');
+  document.getElementById('progressWrap').classList.remove('show');
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('visStatus').textContent = 'IDLE';
+  renderVisNodes();
+}
+
+function copyFinal() {
+  const txt = document.getElementById('finalContent').textContent;
+  navigator.clipboard.writeText(txt).then(()=>alert('Copied!'));
+}
+
+function saveFinal() {
+  const txt = document.getElementById('finalContent').textContent;
+  const blob = new Blob([txt], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'swarm_output_' + Date.now() + '.txt';
+  a.click();
+}
+
+// ── INIT ───────────────────────────────────────────────────────
+renderAgentGrid();
+checkOllama();
+setInterval(checkOllama, 15000);
+</script>
+</body>
+</html>
